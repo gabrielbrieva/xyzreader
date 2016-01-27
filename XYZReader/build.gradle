@@ -32,6 +32,11 @@ dependencies {
 
     compile 'com.android.support:palette-v7:22.2.1'
     compile 'com.android.support:recyclerview-v7:22.2.1'
-    compile 'com.squareup.okhttp:okhttp:1.1.0'
+
+    compile 'com.squareup.picasso:picasso:2.5.2'
+    compile 'com.squareup.retrofit2:retrofit:2.0.0-beta3'
+    compile 'com.squareup.retrofit2:converter-gson:2.0.0-beta3'
+    compile 'com.squareup.okhttp3:logging-interceptor:3.0.1'
+
     compile files('libs/volley.jar')
 }

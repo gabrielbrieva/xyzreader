@@ -12,13 +12,20 @@ import android.os.RemoteException;
 import android.text.format.Time;
 import android.util.Log;
 
-import com.example.xyzreader.remote.RemoteEndpointUtil;
+import com.example.xyzreader.remote.ArticleService;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
+import java.io.IOException;
 import java.util.ArrayList;
+
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.GsonConverterFactory;
+import retrofit2.Call;
+import retrofit2.Response;
+import retrofit2.Retrofit;
 
 public class UpdaterService extends IntentService {
     private static final String TAG = "UpdaterService";
@@ -27,6 +34,8 @@ public class UpdaterService extends IntentService {
             = "com.example.xyzreader.intent.action.STATE_CHANGE";
     public static final String EXTRA_REFRESHING
             = "com.example.xyzreader.intent.extra.REFRESHING";
+
+    private static final String URL_BASE = "https://dl.dropboxusercontent.com/u/231329/xyzreader_data/";
 
     public UpdaterService() {
         super(TAG);
@@ -55,33 +64,54 @@ public class UpdaterService extends IntentService {
         cpo.add(ContentProviderOperation.newDelete(dirUri).build());
 
         try {
-            JSONArray array = RemoteEndpointUtil.fetchJsonArray();
-            if (array == null) {
-                throw new JSONException("Invalid parsed item array" );
-            }
 
-            for (int i = 0; i < array.length(); i++) {
+            /*HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+            // set your desired log level
+            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
+            // add logging as last interceptor
+            httpClient.interceptors().add(logging);*/
+
+            Retrofit retrofit = new Retrofit.Builder()
+                    .baseUrl(URL_BASE)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    //.client(httpClient.build())
+                    .build();
+
+            ArticleService service = retrofit.create(ArticleService.class);
+            Call<JsonArray> call = service.listArticles();
+            Response<JsonArray> response = call.execute();
+            JsonArray array = null;
+
+            if (response != null && response.isSuccess())
+                array = response.body();
+
+            if (array == null)
+                throw new JsonParseException("Invalid parsed item array" );
+
+            for (int i = 0; i < array.size(); i++) {
                 ContentValues values = new ContentValues();
-                JSONObject object = array.getJSONObject(i);
-                values.put(ItemsContract.Items.SERVER_ID, object.getString("id" ));
-                values.put(ItemsContract.Items.AUTHOR, object.getString("author" ));
-                values.put(ItemsContract.Items.TITLE, object.getString("title" ));
-                values.put(ItemsContract.Items.BODY, object.getString("body" ));
-                values.put(ItemsContract.Items.THUMB_URL, object.getString("thumb" ));
-                values.put(ItemsContract.Items.PHOTO_URL, object.getString("photo" ));
-                values.put(ItemsContract.Items.ASPECT_RATIO, object.getString("aspect_ratio" ));
-                time.parse3339(object.getString("published_date"));
+                JsonObject object = array.get(i).getAsJsonObject();
+                values.put(ItemsContract.Items.SERVER_ID, object.get("id").getAsString());
+                values.put(ItemsContract.Items.AUTHOR, object.get("author").getAsString());
+                values.put(ItemsContract.Items.TITLE, object.get("title").getAsString());
+                values.put(ItemsContract.Items.BODY, object.get("body").getAsString());
+                values.put(ItemsContract.Items.THUMB_URL, object.get("thumb").getAsString());
+                values.put(ItemsContract.Items.PHOTO_URL, object.get("photo").getAsString());
+                values.put(ItemsContract.Items.ASPECT_RATIO, object.get("aspect_ratio").getAsString());
+                time.parse3339(object.get("published_date").getAsString());
                 values.put(ItemsContract.Items.PUBLISHED_DATE, time.toMillis(false));
                 cpo.add(ContentProviderOperation.newInsert(dirUri).withValues(values).build());
             }
 
             getContentResolver().applyBatch(ItemsContract.CONTENT_AUTHORITY, cpo);
 
-        } catch (JSONException | RemoteException | OperationApplicationException e) {
+        } catch (JsonParseException | RemoteException | OperationApplicationException e) {
             Log.e(TAG, "Error updating content.", e);
+        } catch (IOException e) {
+            Log.e(TAG, "Error getting content.", e);
         }
 
-        sendStickyBroadcast(
-                new Intent(BROADCAST_ACTION_STATE_CHANGE).putExtra(EXTRA_REFRESHING, false));
+        sendStickyBroadcast(new Intent(BROADCAST_ACTION_STATE_CHANGE).putExtra(EXTRA_REFRESHING, false));
     }
 }
