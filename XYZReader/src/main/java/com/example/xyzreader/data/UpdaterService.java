@@ -20,8 +20,6 @@ import com.google.gson.JsonParseException;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import okhttp3.OkHttpClient;
-import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.GsonConverterFactory;
 import retrofit2.Call;
 import retrofit2.Response;
@@ -65,17 +63,9 @@ public class UpdaterService extends IntentService {
 
         try {
 
-            /*HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            // set your desired log level
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
-            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
-            // add logging as last interceptor
-            httpClient.interceptors().add(logging);*/
-
             Retrofit retrofit = new Retrofit.Builder()
                     .baseUrl(URL_BASE)
                     .addConverterFactory(GsonConverterFactory.create())
-                    //.client(httpClient.build())
                     .build();
 
             ArticleService service = retrofit.create(ArticleService.class);
