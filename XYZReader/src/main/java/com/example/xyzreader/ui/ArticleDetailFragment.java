@@ -11,6 +11,7 @@ import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v4.app.ShareCompat;
@@ -48,10 +49,12 @@ public class ArticleDetailFragment extends Fragment implements
     private long mItemId;
     private View mRootView;
     private ImageView mPhotoView;
+    private Target mBitmapTarget;
     private TextView mTvBody;
     private int mMutedColor;
     private Toolbar mToolbar;
     private CollapsingToolbarLayout mCollapsingToolbarLayout;
+    private View mTitleGradient;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -118,8 +121,8 @@ public class ArticleDetailFragment extends Fragment implements
             return;
         }
 
-        //TextView titleView = (TextView) mRootView.findViewById(R.id.article_title);
-        //TextView bylineView = (TextView) mRootView.findViewById(R.id.article_byline);
+        TextView titleView = (TextView) mRootView.findViewById(R.id.article_title);
+        TextView bylineView = (TextView) mRootView.findViewById(R.id.article_byline);
         //bylineView.setMovementMethod(new LinkMovementMethod());
         mTvBody = (TextView) mRootView.findViewById(R.id.article_body);
         mTvBody.setTypeface(Typeface.createFromAsset(getResources().getAssets(), "Rosario-Regular.ttf"));
@@ -127,57 +130,66 @@ public class ArticleDetailFragment extends Fragment implements
         mPhotoView = (ImageView) mRootView.findViewById(R.id.ivArticleImage);
         mToolbar = (Toolbar) mRootView.findViewById(R.id.toolbar);
         mCollapsingToolbarLayout = (CollapsingToolbarLayout) mRootView.findViewById(R.id.collapsingToolbarLayout);
+        mTitleGradient = mRootView.findViewById(R.id.vTitleGradient);
+
+        mCollapsingToolbarLayout.setTitle("");
+        mCollapsingToolbarLayout.setTitleEnabled(false);
 
         if (mCursor != null) {
 
             ((AppCompatActivity) getActivity()).setSupportActionBar(mToolbar);
             ((AppCompatActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-            //titleView.setText(mCursor.getString(ArticleLoader.Query.TITLE));
-            /*bylineView.setText(Html.fromHtml(
-                    DateUtils.getRelativeTimeSpanString(
-                            mCursor.getLong(ArticleLoader.Query.PUBLISHED_DATE),
-                            System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
-                            DateUtils.FORMAT_ABBREV_ALL).toString()
-                            + " by <font color='#ffffff'>"
-                            + mCursor.getString(ArticleLoader.Query.AUTHOR)
-                            + "</font>"));*/
+            titleView.setText(mCursor.getString(ArticleLoader.Query.TITLE));
+            bylineView.setText(Html.fromHtml(DateUtils.getRelativeTimeSpanString(
+                    mCursor.getLong(ArticleLoader.Query.PUBLISHED_DATE),
+                    System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
+                    DateUtils.FORMAT_ABBREV_ALL).toString()
+                    + " by <font color='#ffffff'>"
+                    + mCursor.getString(ArticleLoader.Query.AUTHOR)
+                    + "</font>"));
             mTvBody.setText(Html.fromHtml(mCursor.getString(ArticleLoader.Query.BODY)));
-            mCollapsingToolbarLayout.setTitle(mCursor.getString(ArticleLoader.Query.TITLE));
 
             final String imageURL = mCursor.getString(ArticleLoader.Query.PHOTO_URL);
+
+            mBitmapTarget = new Target() {
+                @Override
+                public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+                    Log.d(TAG, "Bitmap loaded from " + imageURL);
+                    if (bitmap != null) {
+                        Palette.Builder paletteBuilder = new Palette.Builder(bitmap);
+                        Palette p = paletteBuilder.generate();
+                        mMutedColor = p.getDarkMutedColor(0xAAAAAAAA);
+
+                        int[] colors = new int[] {Color.parseColor("#00000000"), mMutedColor};
+                        GradientDrawable gd = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
+                        mTitleGradient.setBackground(gd);
+
+                        mPhotoView.setImageBitmap(bitmap);
+                    }
+                }
+
+                @Override
+                public void onBitmapFailed(Drawable errorDrawable) {
+                    Log.e(TAG, "Error loading image from " + imageURL);
+                }
+
+                @Override
+                public void onPrepareLoad(Drawable placeHolderDrawable) {
+                }
+            };
 
             Picasso p = Picasso.with(getActivity());
             p.setIndicatorsEnabled(true);
             p.setLoggingEnabled(true);
             p.load(imageURL)
-                    .into(mPhotoView);
-                    /*.into(new Target() {
-                        @Override
-                        public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
-                            Log.d(TAG, "Bitmap loaded from " + imageURL);
-                            if (bitmap != null) {
-                                Palette p = Palette.generate(bitmap, 12);
-                                mMutedColor = p.getDarkMutedColor(0xFF333333);
-                                mCollapsingToolbarLayout.setBackgroundColor(mMutedColor);
-                            }
-                        }
-
-                        @Override
-                        public void onBitmapFailed(Drawable errorDrawable) {
-                            Log.e(TAG, "Error loading image from " + imageURL);
-                        }
-
-                        @Override
-                        public void onPrepareLoad(Drawable placeHolderDrawable) {
-                            mPhotoView.setImageDrawable(placeHolderDrawable);
-                        }
-                    });*/
+                    .into(mBitmapTarget);
 
         } else {
+            // TODO show empty message
             //mRootView.setVisibility(View.GONE);
-            mCollapsingToolbarLayout.setTitle("N/A");
-            mTvBody.setText("N/A");
+            //mCollapsingToolbarLayout.setTitle("N/A");
+            //mTvBody.setText("N/A");
         }
     }
 
