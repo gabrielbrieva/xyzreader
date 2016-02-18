@@ -13,6 +13,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v4.app.ShareCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -25,7 +26,9 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AlphaAnimation;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.example.xyzreader.R;
@@ -39,19 +42,30 @@ import com.squareup.picasso.Target;
  * tablets) or a {@link ArticleDetailActivity} on handsets.
  */
 public class ArticleDetailFragment extends Fragment implements
-        LoaderManager.LoaderCallbacks<Cursor> {
+        LoaderManager.LoaderCallbacks<Cursor>, AppBarLayout.OnOffsetChangedListener {
 
     private static final String TAG = "ArticleDetailFragment";
 
     public static final String ARG_ITEM_ID = "ARG_ITEM_ID";
+
+    private static final float PERCENTAGE_TO_HIDE_TITLE_DETAILS = 0.4f;
+    private static final int ALPHA_ANIMATIONS_DURATION = 200;
+    private static final String IS_TITLE_VISIBLE_KEY = "IS_TITLE_VISIBLE_KEY";
+
+    private boolean mIsTheTitleVisible = false;
 
     private Cursor mCursor;
     private long mItemId;
     private View mRootView;
     private ImageView mPhotoView;
     private Target mBitmapTarget;
+    private LinearLayout mTitleContainer;
+    private String mTitle;
+    private TextView mTitleView;
+    private TextView mBylineView;
     private TextView mTvBody;
     private int mMutedColor;
+    private AppBarLayout mAppBarLayout;
     private Toolbar mToolbar;
     private CollapsingToolbarLayout mCollapsingToolbarLayout;
     private View mTitleGradient;
@@ -74,6 +88,10 @@ public class ArticleDetailFragment extends Fragment implements
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (savedInstanceState != null) {
+            mIsTheTitleVisible = savedInstanceState.getBoolean(IS_TITLE_VISIBLE_KEY);
+        }
 
         if (getArguments().containsKey(ARG_ITEM_ID)) {
             mItemId = getArguments().getLong(ARG_ITEM_ID);
@@ -121,27 +139,32 @@ public class ArticleDetailFragment extends Fragment implements
             return;
         }
 
-        TextView titleView = (TextView) mRootView.findViewById(R.id.article_title);
-        TextView bylineView = (TextView) mRootView.findViewById(R.id.article_byline);
+        mTitleContainer = (LinearLayout) mRootView.findViewById(R.id.ll_title_container);
+        mTitleView = (TextView) mRootView.findViewById(R.id.article_title);
+        mBylineView = (TextView) mRootView.findViewById(R.id.article_byline);
         //bylineView.setMovementMethod(new LinkMovementMethod());
         mTvBody = (TextView) mRootView.findViewById(R.id.article_body);
         mTvBody.setTypeface(Typeface.createFromAsset(getResources().getAssets(), "Rosario-Regular.ttf"));
 
         mPhotoView = (ImageView) mRootView.findViewById(R.id.ivArticleImage);
+        mAppBarLayout = (AppBarLayout) mRootView.findViewById(R.id.app_bar_layout);
         mToolbar = (Toolbar) mRootView.findViewById(R.id.toolbar);
         mCollapsingToolbarLayout = (CollapsingToolbarLayout) mRootView.findViewById(R.id.collapsingToolbarLayout);
         mTitleGradient = mRootView.findViewById(R.id.vTitleGradient);
 
-        mCollapsingToolbarLayout.setTitle("");
-        mCollapsingToolbarLayout.setTitleEnabled(false);
+        mToolbar.setTitle("");
+        mAppBarLayout.addOnOffsetChangedListener(this);
 
         if (mCursor != null) {
+
+            mTitle = mCursor.getString(ArticleLoader.Query.TITLE);
 
             ((AppCompatActivity) getActivity()).setSupportActionBar(mToolbar);
             ((AppCompatActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-            titleView.setText(mCursor.getString(ArticleLoader.Query.TITLE));
-            bylineView.setText(Html.fromHtml(DateUtils.getRelativeTimeSpanString(
+            mTitleView.setText(mTitle);
+
+            mBylineView.setText(Html.fromHtml(DateUtils.getRelativeTimeSpanString(
                     mCursor.getLong(ArticleLoader.Query.PUBLISHED_DATE),
                     System.currentTimeMillis(), DateUtils.HOUR_IN_MILLIS,
                     DateUtils.FORMAT_ABBREV_ALL).toString()
@@ -164,6 +187,8 @@ public class ArticleDetailFragment extends Fragment implements
                         int[] colors = new int[] {Color.parseColor("#00000000"), mMutedColor};
                         GradientDrawable gd = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
                         mTitleGradient.setBackground(gd);
+
+                        mCollapsingToolbarLayout.setContentScrimColor(mMutedColor);
 
                         mPhotoView.setImageBitmap(bitmap);
                     }
@@ -222,5 +247,43 @@ public class ArticleDetailFragment extends Fragment implements
     public void onLoaderReset(Loader<Cursor> cursorLoader) {
         mCursor = null;
         bindViews();
+    }
+
+    @Override
+    public void onOffsetChanged(AppBarLayout appBarLayout, int offset) {
+        int maxScroll = appBarLayout.getTotalScrollRange();
+        float percentage = (float) Math.abs(offset) / (float) maxScroll;
+
+        Log.d(TAG, "scroll percentage = " + percentage);
+
+        if (percentage >= PERCENTAGE_TO_HIDE_TITLE_DETAILS) {
+            if(mIsTheTitleVisible) {
+                mToolbar.setTitle(mTitle);
+                startAlphaAnimation(mTitleContainer, ALPHA_ANIMATIONS_DURATION, View.INVISIBLE);
+                mIsTheTitleVisible = false;
+            }
+        } else {
+            if(!mIsTheTitleVisible) {
+                mToolbar.setTitle("");
+                startAlphaAnimation(mTitleContainer, ALPHA_ANIMATIONS_DURATION, View.VISIBLE);
+                mIsTheTitleVisible = true;
+            }
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putBoolean(IS_TITLE_VISIBLE_KEY, mIsTheTitleVisible);
+        super.onSaveInstanceState(outState);
+    }
+
+    private void startAlphaAnimation(View v, long duration, int visibility) {
+        AlphaAnimation alphaAnimation = (visibility == View.VISIBLE)
+                ? new AlphaAnimation(0f, 1f)
+                : new AlphaAnimation(1f, 0f);
+
+        alphaAnimation.setDuration(duration);
+        alphaAnimation.setFillAfter(true);
+        v.startAnimation(alphaAnimation);
     }
 }
