@@ -6,8 +6,14 @@
         <item name="colorAccent">@color/theme_accent</item>
     </style>
 
-    <style name="Theme.Bacon.Detail">
+    <!--<style name="Theme.Bacon.Detail">
         <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>-->
+
+    <style name="CustomActionBar" parent="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
+        <item name="android:windowTranslucentStatus">true</item>
+        <!-- Support library compatibility -->
+        <item name="windowActionBarOverlay">true</item>
     </style>
 
 </resources>

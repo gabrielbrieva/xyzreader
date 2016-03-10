@@ -1,5 +1,6 @@
 package com.example.xyzreader.ui;
 
+import android.annotation.TargetApi;
 import android.app.Fragment;
 import android.app.LoaderManager;
 import android.content.Intent;
@@ -12,6 +13,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CollapsingToolbarLayout;
@@ -26,6 +28,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -69,6 +72,7 @@ public class ArticleDetailFragment extends Fragment implements
     private Toolbar mToolbar;
     private CollapsingToolbarLayout mCollapsingToolbarLayout;
     private View mTitleGradient;
+    private boolean isCurrentFragment = false;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -182,13 +186,17 @@ public class ArticleDetailFragment extends Fragment implements
                     if (bitmap != null) {
                         Palette.Builder paletteBuilder = new Palette.Builder(bitmap);
                         Palette p = paletteBuilder.generate();
-                        mMutedColor = p.getDarkMutedColor(0xAAAAAAAA);
+
+                        mMutedColor = p.getDarkMutedColor(0xAAAAAAAA); // TODO: get default color from resources
 
                         int[] colors = new int[] {Color.parseColor("#00000000"), mMutedColor};
                         GradientDrawable gd = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
                         mTitleGradient.setBackground(gd);
 
                         mCollapsingToolbarLayout.setContentScrimColor(mMutedColor);
+
+                        if (isCurrentFragment && mMutedColor != 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+                            getActivity().getWindow().setStatusBarColor(mMutedColor);
 
                         mPhotoView.setImageBitmap(bitmap);
                     }
@@ -216,6 +224,16 @@ public class ArticleDetailFragment extends Fragment implements
             //mCollapsingToolbarLayout.setTitle("N/A");
             //mTvBody.setText("N/A");
         }
+    }
+
+    @Override
+    public void setMenuVisibility(boolean menuVisible) {
+        super.setMenuVisibility(menuVisible);
+
+        isCurrentFragment = menuVisible;
+
+        if (menuVisible && mMutedColor != 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            getActivity().getWindow().setStatusBarColor(mMutedColor);
     }
 
     @Override

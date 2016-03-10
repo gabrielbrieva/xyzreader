@@ -45,6 +45,7 @@
             app:layout_scrollFlags="scroll|exitUntilCollapsed|snap">
 
             <FrameLayout
+                android:fitsSystemWindows="true"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
 
@@ -67,12 +68,11 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:gravity="bottom"
-                    android:layout_gravity="bottom"
                     android:paddingLeft="@dimen/detail_inner_horiz_margin"
                     android:paddingRight="@dimen/detail_inner_horiz_margin"
                     android:paddingTop="@dimen/detail_metabar_vert_padding"
                     android:paddingBottom="@dimen/detail_metabar_vert_padding"
-                    android:layout_marginBottom="@dimen/detail_metabar_vert_padding">
+                    android:layout_gravity="bottom">
 
                     <TextView
                         android:id="@+id/article_title"
@@ -84,14 +84,16 @@
                         android:textColor="#fff"
                         android:textStyle="bold"
                         android:textSize="@dimen/detail_title_text_size"
-                        android:lineSpacingMultiplier="0.9" />
+                        android:lineSpacingMultiplier="0.9"
+                        android:text="Titulo Titulo Titulo Titulo Titulo Titulo"/>
 
                     <TextView
                         android:id="@+id/article_byline"
                         style="?android:attr/textAppearanceSmall"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="#8fff" />
+                        android:textColor="#8fff"
+                        android:text="text text text text"/>
 
                 </LinearLayout>
 
