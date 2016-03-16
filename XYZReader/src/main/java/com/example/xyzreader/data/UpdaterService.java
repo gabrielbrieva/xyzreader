@@ -50,8 +50,7 @@ public class UpdaterService extends IntentService {
             return;
         }
 
-        sendStickyBroadcast(
-                new Intent(BROADCAST_ACTION_STATE_CHANGE).putExtra(EXTRA_REFRESHING, true));
+        sendStickyBroadcast(new Intent(BROADCAST_ACTION_STATE_CHANGE).putExtra(EXTRA_REFRESHING, true));
 
         // Don't even inspect the intent, we only do one thing, and that's fetch content.
         ArrayList<ContentProviderOperation> cpo = new ArrayList<ContentProviderOperation>();

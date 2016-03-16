@@ -144,9 +144,9 @@ public class ArticleDetailFragment extends Fragment implements
         }
 
         mTitleContainer = (LinearLayout) mRootView.findViewById(R.id.ll_title_container);
+        mTitleContainer.setVisibility(View.INVISIBLE);
         mTitleView = (TextView) mRootView.findViewById(R.id.article_title);
         mBylineView = (TextView) mRootView.findViewById(R.id.article_byline);
-        //bylineView.setMovementMethod(new LinkMovementMethod());
         mTvBody = (TextView) mRootView.findViewById(R.id.article_body);
         mTvBody.setTypeface(Typeface.createFromAsset(getResources().getAssets(), "Rosario-Regular.ttf"));
 
@@ -156,17 +156,25 @@ public class ArticleDetailFragment extends Fragment implements
         mCollapsingToolbarLayout = (CollapsingToolbarLayout) mRootView.findViewById(R.id.collapsingToolbarLayout);
         mTitleGradient = mRootView.findViewById(R.id.vTitleGradient);
 
-        mToolbar.setTitle("");
+        //if (mIsTheTitleVisible)
+            mToolbar.setTitle("");
+
         mAppBarLayout.addOnOffsetChangedListener(this);
 
         if (mCursor != null) {
 
             mTitle = mCursor.getString(ArticleLoader.Query.TITLE);
 
+            if (!mIsTheTitleVisible)
+                mToolbar.setTitle(mTitle);
+
             ((AppCompatActivity) getActivity()).setSupportActionBar(mToolbar);
             ((AppCompatActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
             mTitleView.setText(mTitle);
+
+            if (mIsTheTitleVisible)
+                mTitleContainer.setVisibility(View.VISIBLE);
 
             mBylineView.setText(Html.fromHtml(DateUtils.getRelativeTimeSpanString(
                     mCursor.getLong(ArticleLoader.Query.PUBLISHED_DATE),
@@ -271,8 +279,6 @@ public class ArticleDetailFragment extends Fragment implements
     public void onOffsetChanged(AppBarLayout appBarLayout, int offset) {
         int maxScroll = appBarLayout.getTotalScrollRange();
         float percentage = (float) Math.abs(offset) / (float) maxScroll;
-
-        Log.d(TAG, "scroll percentage = " + percentage);
 
         if (percentage >= PERCENTAGE_TO_HIDE_TITLE_DETAILS) {
             if(mIsTheTitleVisible) {
