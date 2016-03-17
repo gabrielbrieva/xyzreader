@@ -4,6 +4,10 @@
     <color name="theme_primary">#FB5621</color>
     <color name="theme_primary_dark">#a43511</color>
     <color name="theme_accent">#0073ff</color>
-    <color name="default_text_color">#3d3d3d</color>
-    <color name="gd_default">#00000000</color>
+
+    <color name="primary_text">#d7000000</color>
+    <color name="secondary_text">#9b000000</color>
+
+    <color name="detail_title">#eeffffff</color>
+    <color name="detail_subtitle">#aaffffff</color>
 </resources>
