@@ -6,7 +6,7 @@ Android app where many of Material Design is applied using Android Design Suppor
 ScreenShots
 -----------
 
-![Alt text](/screenshots/device-2016-03-22-003917.png?raw=true "Movies Land")
-![Alt text](/screenshots/device-2016-03-22-003959?raw=true "Movies")
-![Alt text](/screenshots/device-2016-03-22-004050?raw=true "Movie Detail")
-![Alt text](/screenshots/device-2016-03-22-004127?raw=true "Movie Detail with Toolbar collapsed")
+![Alt text](/screenshots/device-2016-03-22-003917.png?raw=true "Articles List Land")
+![Alt text](/screenshots/device-2016-03-22-003959?raw=true "Article Detail Land")
+![Alt text](/screenshots/device-2016-03-22-004050?raw=true "Article Detail Portrait")
+![Alt text](/screenshots/device-2016-03-22-004127?raw=true "Articles List Portrait")
