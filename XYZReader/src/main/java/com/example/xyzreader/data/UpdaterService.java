@@ -41,66 +41,68 @@ public class UpdaterService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
+
+        sendBroadcast(new Intent(BROADCAST_ACTION_STATE_CHANGE).putExtra(EXTRA_REFRESHING, true));
+
         Time time = new Time();
 
         ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         NetworkInfo ni = cm.getActiveNetworkInfo();
+
         if (ni == null || !ni.isConnected()) {
             Log.w(TAG, "Not online, not refreshing.");
-            return;
-        }
+        } else {
 
-        sendStickyBroadcast(new Intent(BROADCAST_ACTION_STATE_CHANGE).putExtra(EXTRA_REFRESHING, true));
+            // Don't even inspect the intent, we only do one thing, and that's fetch content.
+            ArrayList<ContentProviderOperation> cpo = new ArrayList<ContentProviderOperation>();
 
-        // Don't even inspect the intent, we only do one thing, and that's fetch content.
-        ArrayList<ContentProviderOperation> cpo = new ArrayList<ContentProviderOperation>();
+            Uri dirUri = ItemsContract.Items.buildDirUri();
 
-        Uri dirUri = ItemsContract.Items.buildDirUri();
+            // Delete all items
+            cpo.add(ContentProviderOperation.newDelete(dirUri).build());
 
-        // Delete all items
-        cpo.add(ContentProviderOperation.newDelete(dirUri).build());
+            try {
 
-        try {
+                Retrofit retrofit = new Retrofit.Builder()
+                        .baseUrl(URL_BASE)
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build();
 
-            Retrofit retrofit = new Retrofit.Builder()
-                    .baseUrl(URL_BASE)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build();
+                ArticleService service = retrofit.create(ArticleService.class);
+                Call<JsonArray> call = service.listArticles();
+                Response<JsonArray> response = call.execute();
+                JsonArray array = null;
 
-            ArticleService service = retrofit.create(ArticleService.class);
-            Call<JsonArray> call = service.listArticles();
-            Response<JsonArray> response = call.execute();
-            JsonArray array = null;
+                if (response != null && response.isSuccess())
+                    array = response.body();
 
-            if (response != null && response.isSuccess())
-                array = response.body();
+                if (array == null)
+                    throw new JsonParseException("Invalid parsed item array");
 
-            if (array == null)
-                throw new JsonParseException("Invalid parsed item array" );
+                for (int i = 0; i < array.size(); i++) {
+                    ContentValues values = new ContentValues();
+                    JsonObject object = array.get(i).getAsJsonObject();
+                    values.put(ItemsContract.Items.SERVER_ID, object.get("id").getAsString());
+                    values.put(ItemsContract.Items.AUTHOR, object.get("author").getAsString());
+                    values.put(ItemsContract.Items.TITLE, object.get("title").getAsString());
+                    values.put(ItemsContract.Items.BODY, object.get("body").getAsString());
+                    values.put(ItemsContract.Items.THUMB_URL, object.get("thumb").getAsString());
+                    values.put(ItemsContract.Items.PHOTO_URL, object.get("photo").getAsString());
+                    values.put(ItemsContract.Items.ASPECT_RATIO, object.get("aspect_ratio").getAsString());
+                    time.parse3339(object.get("published_date").getAsString());
+                    values.put(ItemsContract.Items.PUBLISHED_DATE, time.toMillis(false));
+                    cpo.add(ContentProviderOperation.newInsert(dirUri).withValues(values).build());
+                }
 
-            for (int i = 0; i < array.size(); i++) {
-                ContentValues values = new ContentValues();
-                JsonObject object = array.get(i).getAsJsonObject();
-                values.put(ItemsContract.Items.SERVER_ID, object.get("id").getAsString());
-                values.put(ItemsContract.Items.AUTHOR, object.get("author").getAsString());
-                values.put(ItemsContract.Items.TITLE, object.get("title").getAsString());
-                values.put(ItemsContract.Items.BODY, object.get("body").getAsString());
-                values.put(ItemsContract.Items.THUMB_URL, object.get("thumb").getAsString());
-                values.put(ItemsContract.Items.PHOTO_URL, object.get("photo").getAsString());
-                values.put(ItemsContract.Items.ASPECT_RATIO, object.get("aspect_ratio").getAsString());
-                time.parse3339(object.get("published_date").getAsString());
-                values.put(ItemsContract.Items.PUBLISHED_DATE, time.toMillis(false));
-                cpo.add(ContentProviderOperation.newInsert(dirUri).withValues(values).build());
+                getContentResolver().applyBatch(ItemsContract.CONTENT_AUTHORITY, cpo);
+
+            } catch (JsonParseException | RemoteException | OperationApplicationException e) {
+                Log.e(TAG, "Error updating content.", e);
+            } catch (IOException e) {
+                Log.e(TAG, "Error getting content.", e);
             }
-
-            getContentResolver().applyBatch(ItemsContract.CONTENT_AUTHORITY, cpo);
-
-        } catch (JsonParseException | RemoteException | OperationApplicationException e) {
-            Log.e(TAG, "Error updating content.", e);
-        } catch (IOException e) {
-            Log.e(TAG, "Error getting content.", e);
         }
 
-        sendStickyBroadcast(new Intent(BROADCAST_ACTION_STATE_CHANGE).putExtra(EXTRA_REFRESHING, false));
+        sendBroadcast(new Intent(BROADCAST_ACTION_STATE_CHANGE).putExtra(EXTRA_REFRESHING, false));
     }
 }

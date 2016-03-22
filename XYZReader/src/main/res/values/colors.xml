@@ -10,4 +10,5 @@
 
     <color name="detail_title">#eeffffff</color>
     <color name="detail_subtitle">#aaffffff</color>
+    <color name="detail_background">#11000000</color>
 </resources>

@@ -7,6 +7,17 @@
     android:layout_height="match_parent"
     tools:context="com.example.xyzreader.ui.ArticleListActivity">
 
+    <TextView
+        android:id="@+id/tv_swipe_instruction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/swipe_instruction"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:gravity="center_horizontal"
+        android:padding="10dp"
+        android:textColor="@color/secondary_text"
+        android:visibility="gone"/>
+
     <android.support.v4.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh_layout"
         android:layout_width="match_parent"

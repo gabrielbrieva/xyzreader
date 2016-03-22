@@ -1,6 +1,5 @@
 package com.example.xyzreader.ui;
 
-import android.annotation.TargetApi;
 import android.app.Fragment;
 import android.app.LoaderManager;
 import android.content.Intent;
@@ -8,9 +7,7 @@ import android.content.Loader;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import android.graphics.Rect;
 import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -28,7 +25,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.view.animation.AlphaAnimation;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -59,6 +55,7 @@ public class ArticleDetailFragment extends Fragment implements
 
     private Cursor mCursor;
     private long mItemId;
+    private int mPosition;
     private View mRootView;
     private ImageView mPhotoView;
     private Target mBitmapTarget;
@@ -81,9 +78,10 @@ public class ArticleDetailFragment extends Fragment implements
     public ArticleDetailFragment() {
     }
 
-    public static ArticleDetailFragment newInstance(long itemId) {
+    public static ArticleDetailFragment newInstance(long itemId, int position) {
         Bundle arguments = new Bundle();
         arguments.putLong(ARG_ITEM_ID, itemId);
+        arguments.putInt(ArticleDetailActivity.ARG_POSITION, position);
         ArticleDetailFragment fragment = new ArticleDetailFragment();
         fragment.setArguments(arguments);
         return fragment;
@@ -101,11 +99,9 @@ public class ArticleDetailFragment extends Fragment implements
             mItemId = getArguments().getLong(ARG_ITEM_ID);
         }
 
-        //setHasOptionsMenu(true);
-    }
-
-    public ArticleDetailActivity getActivityCast() {
-        return (ArticleDetailActivity) getActivity();
+        if (getArguments().containsKey(ArticleDetailActivity.ARG_POSITION)) {
+            mPosition = getArguments().getInt(ArticleDetailActivity.ARG_POSITION);
+        }
     }
 
     @Override
@@ -122,16 +118,6 @@ public class ArticleDetailFragment extends Fragment implements
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         mRootView = inflater.inflate(R.layout.fragment_article_detail, container, false);
-
-        mRootView.findViewById(R.id.share_fab).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(Intent.createChooser(ShareCompat.IntentBuilder.from(getActivity())
-                        .setType("text/plain")
-                        .setText("Some sample text")
-                        .getIntent(), getString(R.string.action_share)));
-            }
-        });
 
         bindViews();
 
@@ -151,6 +137,9 @@ public class ArticleDetailFragment extends Fragment implements
         mTvBody.setTypeface(Typeface.createFromAsset(getResources().getAssets(), "Rosario-Regular.ttf"));
 
         mPhotoView = (ImageView) mRootView.findViewById(R.id.ivArticleImage);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            mPhotoView.setTransitionName(getString(R.string.transition_detail) + mPosition);
+
         mAppBarLayout = (AppBarLayout) mRootView.findViewById(R.id.app_bar_layout);
         mToolbar = (Toolbar) mRootView.findViewById(R.id.toolbar);
         mCollapsingToolbarLayout = (CollapsingToolbarLayout) mRootView.findViewById(R.id.collapsingToolbarLayout);
@@ -184,8 +173,19 @@ public class ArticleDetailFragment extends Fragment implements
                     + mCursor.getString(ArticleLoader.Query.AUTHOR)
                     + "</font>"));
             mTvBody.setText(Html.fromHtml(mCursor.getString(ArticleLoader.Query.BODY)));
+            mTvBody.setMovementMethod(LinkMovementMethod.getInstance());
 
             final String imageURL = mCursor.getString(ArticleLoader.Query.PHOTO_URL);
+
+            mRootView.findViewById(R.id.share_fab).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    startActivity(Intent.createChooser(ShareCompat.IntentBuilder.from(getActivity())
+                            .setType("text/plain")
+                            .setText("XYZ Reader: " + mTitle)
+                            .getIntent(), getString(R.string.action_share)));
+                }
+            });
 
             mBitmapTarget = new Target() {
                 @Override
@@ -193,26 +193,33 @@ public class ArticleDetailFragment extends Fragment implements
                     Log.d(TAG, "Bitmap loaded from " + imageURL);
                     if (bitmap != null) {
                         Palette.Builder paletteBuilder = new Palette.Builder(bitmap);
-                        Palette p = paletteBuilder.generate();
+                        Palette palette = paletteBuilder.generate();
 
-                        mMutedColor = p.getDarkMutedColor(0xAAAAAAAA); // TODO: get default color from resources
+                        mMutedColor = palette.getDarkMutedColor(Color.parseColor("#40000000"));
 
-                        int[] colors = new int[] {Color.parseColor("#00000000"), mMutedColor};
+                        int[] colors = new int[]{Color.parseColor("#00000000"), mMutedColor};
                         GradientDrawable gd = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, colors);
                         mTitleGradient.setBackground(gd);
 
                         mCollapsingToolbarLayout.setContentScrimColor(mMutedColor);
 
-                        if (isCurrentFragment && mMutedColor != 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
-                            getActivity().getWindow().setStatusBarColor(mMutedColor);
-
                         mPhotoView.setImageBitmap(bitmap);
+
+                        if (isCurrentFragment && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            if (mMutedColor != 0)
+                                getActivity().getWindow().setStatusBarColor(mMutedColor);
+
+                            initTransition();
+                        }
                     }
                 }
 
                 @Override
                 public void onBitmapFailed(Drawable errorDrawable) {
                     Log.e(TAG, "Error loading image from " + imageURL);
+
+                    if (isCurrentFragment && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+                        initTransition();
                 }
 
                 @Override
@@ -220,18 +227,23 @@ public class ArticleDetailFragment extends Fragment implements
                 }
             };
 
-            Picasso p = Picasso.with(getActivity());
-            p.setIndicatorsEnabled(true);
-            p.setLoggingEnabled(true);
-            p.load(imageURL)
-                    .into(mBitmapTarget);
+            Picasso.with(getActivity()).load(imageURL).into(mBitmapTarget);
 
-        } else {
-            // TODO show empty message
-            //mRootView.setVisibility(View.GONE);
-            //mCollapsingToolbarLayout.setTitle("N/A");
-            //mTvBody.setText("N/A");
         }
+    }
+
+    private void initTransition() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            getActivity().startPostponedEnterTransition();
+    }
+
+    private void postponeTransition() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            getActivity().postponeEnterTransition();
+    }
+
+    public ImageView getSharedView() {
+        return mPhotoView;
     }
 
     @Override

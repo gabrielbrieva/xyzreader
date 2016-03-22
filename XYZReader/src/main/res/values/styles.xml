@@ -33,6 +33,7 @@
     <!-- Detail text styles -->
 
     <style name="DetailText" parent="@style/TextAppearance.AppCompat.Medium">
+        <item name="android:layout_marginTop">@dimen/detail_body_text_vertical_margin</item>
         <item name="android:layout_marginLeft">@dimen/detail_body_text_horizontal_margin</item>
         <item name="android:layout_marginRight">@dimen/detail_body_text_horizontal_margin</item>
         <item name="android:maxWidth">@dimen/detail_card_max_width</item>
